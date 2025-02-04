@@ -1,5 +1,7 @@
 package com.example.rest_tdd.domain.member.member.controller;
 
+import com.example.rest_tdd.domain.member.member.dto.MemberDto;
+import com.example.rest_tdd.domain.member.member.entity.Member;
 import com.example.rest_tdd.domain.member.member.service.MemberService;
 import com.example.rest_tdd.global.dto.RsData;
 import lombok.RequiredArgsConstructor;
@@ -18,10 +20,14 @@ public class ApiV1MemberController {
     record JoinReqBody(String username, String password, String nickname) {}
 
     @PostMapping("/join")
-    public RsData<Void> join(@RequestBody JoinReqBody reqBody) {
+    public RsData<MemberDto> join(@RequestBody JoinReqBody reqBody) {
 
-        memberService.join(reqBody.username(), reqBody.password(), reqBody.nickname());
-        return new RsData<>("201-1", "회원 가입이 완료되었습니다.");
+        Member member = memberService.join(reqBody.username(), reqBody.password(), reqBody.nickname());
+        return new RsData<>(
+                "201-1",
+                "회원 가입이 완료되었습니다.",
+                new MemberDto(member)
+                );
     }
 
 }
