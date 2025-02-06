@@ -1,7 +1,8 @@
 package com.example.rest_tdd.post;
 
-import com.example.rest_tdd.domain.member.member.controller.ApiV1MemberController;
 import com.example.rest_tdd.domain.post.post.controller.ApiV1PostController;
+import com.example.rest_tdd.domain.post.post.entity.Post;
+import com.example.rest_tdd.domain.post.post.service.PostService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,8 +12,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.web.servlet.HandlerExceptionResolver;
 
+import java.util.List;
+
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -23,6 +26,41 @@ public class ApiV1PostControllerTest {
 
     @Autowired
     private MockMvc mvc;
+    @Autowired
+    private PostService postService;
+
+    @Test
+    @DisplayName("다건 조회")
+    void getPosts() throws Exception {
+
+        ResultActions perform = mvc.perform(
+                get("/api/v1/posts")
+        );
+        perform
+                .andExpect(status().isOk())
+                .andExpect(handler().handlerType(ApiV1PostController.class))
+                .andExpect(handler().methodName("getItems"))
+                .andExpect(jsonPath("$.code").value("200-1"))
+                .andExpect(jsonPath("$.msg").value("글 목록 조회가 완료되었습니다."));
+
+        List<Post> items = postService.getItems();
+
+        for (int i = 0; i < items.size(); i++) {
+            Post post = items.get(i);
+
+            perform
+                    .andExpect(jsonPath("$.data[%d]".formatted(i)).exists())
+                    .andExpect(jsonPath("$.data[%d].title".formatted(i)).value(post.getTitle()))
+                    .andExpect(jsonPath("$.data[%d].content".formatted(i)).doesNotExist())
+                    .andExpect(jsonPath("$.data[%d].authorId".formatted(i)).value(post.getAuthor().getId()))
+                    .andExpect(jsonPath("$.data[%d].createdDatetime".formatted(i)).value(
+                            matchesPattern(post.getCreatedDate().toString().replaceAll("0+$", "") + ".*")))
+                    .andExpect(jsonPath("$.data[%d].modifiedDatetime".formatted(i)).value(
+                            matchesPattern(post.getModifiedDate().toString().replaceAll("0+$", "") + ".*")))
+                    .andExpect(jsonPath("$.data[%d].opened".formatted(i)).value("true"))
+                    .andExpect(jsonPath("$.data[%d].listed".formatted(i)).value("true"));
+        }
+    }
 
     @Test
     @DisplayName("단건 조회")
@@ -33,6 +71,8 @@ public class ApiV1PostControllerTest {
                 get("/api/v1/posts/%d".formatted(id))
         );
 
+        Post post = postService.getItem(id).get();
+
         resultActions
                 .andExpect(status().isOk())
                 .andExpect(handler().handlerType(ApiV1PostController.class))
@@ -40,11 +80,18 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("200-1"))
                 .andExpect(jsonPath("$.msg").value("글 조회가 완료되었습니다."))
                 .andExpect(jsonPath("$.data").exists())
-                .andExpect(jsonPath("$.data.content").exists())
+                .andExpect(jsonPath("$.data.title").value(post.getTitle()))
+                .andExpect(jsonPath("$.data.content").value(post.getContent()))
+                .andExpect(jsonPath("$.data.authorId").value(post.getAuthor().getId()))
+                .andExpect(jsonPath("$.data.createdDatetime").value(
+                        matchesPattern(post.getCreatedDate().toString().replaceAll("0+$", "") + ".*")))
+                .andExpect(jsonPath("$.data.modifiedDatetime").value(
+                        matchesPattern(post.getModifiedDate().toString().replaceAll("0+$", "") + ".*")))
                 .andExpect(jsonPath("$.data.opened").value("true"))
                 .andExpect(jsonPath("$.data.listed").value("true"));
 
     }
+
     @Test
     @DisplayName("단건 조회 - 없는 글 조회")
     void getPost2() throws Exception {
@@ -61,6 +108,7 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("404-1"))
                 .andExpect(jsonPath("$.msg").value("존재하지 않는 글입니다."));
     }
+
     @Test
     @DisplayName("단건 조회 - 비밀 글 작성자 아닌 사람이 조회")
     void getPost3() throws Exception {
@@ -69,7 +117,7 @@ public class ApiV1PostControllerTest {
 
         ResultActions resultActions = mvc.perform(
                 get("/api/v1/posts/%d".formatted(id))
-                        .header("Authorization", "Bearer "+apiKey)
+                        .header("Authorization", "Bearer " + apiKey)
                         .contentType(MediaType.APPLICATION_JSON)
                         .characterEncoding("UTF-8")
         );
@@ -81,6 +129,7 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("403-1"))
                 .andExpect(jsonPath("$.msg").value("비공개된 글입니다."));
     }
+
     private ResultActions writePost(String title, String content, String apiKey) throws Exception {
         return mvc.perform(
                 post("/api/v1/posts")
@@ -97,6 +146,7 @@ public class ApiV1PostControllerTest {
                         .characterEncoding("UTF-8")
         );
     }
+
     @Test
     @DisplayName("글 작성")
     void writePost() throws Exception {
@@ -131,6 +181,7 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("401-1"))
                 .andExpect(jsonPath("$.msg").value("잘못된 인증 정보입니다."));
     }
+
     @Test
     @DisplayName("body 없음")
     void writePostWithoutBody() throws Exception {
@@ -146,15 +197,18 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("400-1"))
                 .andExpect(jsonPath("$.msg").value("title : Length : length must be between 3 and 2147483647\ntitle : NotBlank : must not be blank"));
     }
-    private ResultActions modifyPost(Long postId, String title, String content, String apiKey) throws Exception {
+
+    private ResultActions modifyPost(Long postId, String title, String content, boolean opened, boolean listed, String apiKey) throws Exception {
         return mvc.perform(
                 put("/api/v1/posts/%d".formatted(postId))
                         .content("""
                                 {
                                     "title": "%s",
-                                    "content": "%s"
+                                    "content": "%s",
+                                    "opened": "%s",
+                                    "listed": "%s"
                                 }
-                                """.formatted(title, content)
+                                """.formatted(title, content, opened, listed)
                                 .stripIndent()
                         )
                         .header("Authorization", "Bearer %s".formatted(apiKey))
@@ -162,6 +216,7 @@ public class ApiV1PostControllerTest {
                         .characterEncoding("UTF-8")
         );
     }
+
     @Test
     @DisplayName("글 수정")
     void updatePost() throws Exception {
@@ -169,7 +224,7 @@ public class ApiV1PostControllerTest {
         String title = "changedTitle";
         String content = "changedContent";
         String apiKey = "user1";
-        ResultActions perform = modifyPost(postId, title, content, apiKey);
+        ResultActions perform = modifyPost(postId, title, content, true, true, apiKey);
         perform
                 .andExpect(status().isOk())
                 .andExpect(handler().handlerType(ApiV1PostController.class))
@@ -188,7 +243,7 @@ public class ApiV1PostControllerTest {
         String title = "changedTitle";
         String content = "changedContent";
         String apiKey = "";
-        ResultActions perform = modifyPost(postId, title, content, apiKey);
+        ResultActions perform = modifyPost(postId, title, content, true, true, apiKey);
         perform
                 .andExpect(status().isUnauthorized())
                 .andExpect(handler().handlerType(ApiV1PostController.class))
@@ -204,7 +259,7 @@ public class ApiV1PostControllerTest {
         String title = "changedTitle";
         String content = "changedContent";
         String apiKey = "user3";
-        ResultActions perform = modifyPost(postId, title, content, apiKey);
+        ResultActions perform = modifyPost(postId, title, content, true, true, apiKey);
         perform
                 .andExpect(status().isForbidden())
                 .andExpect(handler().handlerType(ApiV1PostController.class))
@@ -212,6 +267,7 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("403-1"))
                 .andExpect(jsonPath("$.msg").value("자신이 작성한 글만 수정 가능합니다."));
     }
+
     @Test
     @DisplayName("글 수정 - no input data ")
     void updatePost4() throws Exception {
@@ -219,7 +275,7 @@ public class ApiV1PostControllerTest {
         String title = "changedTitle";
         String content = "";
         String apiKey = "user3";
-        ResultActions perform = modifyPost(postId, title, content, apiKey);
+        ResultActions perform = modifyPost(postId, title, content, true, true, apiKey);
         perform
                 .andExpect(status().isBadRequest())
                 .andExpect(handler().handlerType(ApiV1PostController.class))
@@ -227,6 +283,7 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("400-1"))
                 .andExpect(jsonPath("$.msg").value("content : Length : length must be between 3 and 2147483647\ncontent : NotBlank : must not be blank"));
     }
+
     @Test
     @DisplayName("글 수정 - 관리자가 수정")
     void updatePost5() throws Exception {
@@ -234,7 +291,7 @@ public class ApiV1PostControllerTest {
         String title = "changedTitle";
         String content = "";
         String apiKey = "admin";
-        ResultActions perform = modifyPost(postId, title, content, apiKey);
+        ResultActions perform = modifyPost(postId, title, content, true, true, apiKey);
         perform
                 .andExpect(status().isBadRequest())
                 .andExpect(handler().handlerType(ApiV1PostController.class))
@@ -242,6 +299,7 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("400-1"))
                 .andExpect(jsonPath("$.msg").value("content : Length : length must be between 3 and 2147483647\ncontent : NotBlank : must not be blank"));
     }
+
     private ResultActions deletePost(Long postId, String apiKey) throws Exception {
         return mvc
                 .perform(
@@ -249,6 +307,7 @@ public class ApiV1PostControllerTest {
                                 .header("Authorization", "Bearer %s".formatted(apiKey))
                 );
     }
+
     @Test
     @DisplayName("글 삭제")
     void deletePost() throws Exception {
@@ -262,6 +321,7 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("200-1"))
                 .andExpect(jsonPath("$.msg").value("%d번 글 삭제가 완료되었습니다.".formatted(postId)));
     }
+
     @Test
     @DisplayName("글 삭제 - no apiKey")
     void deletePost2() throws Exception {
@@ -275,6 +335,7 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("401-1"))
                 .andExpect(jsonPath("$.msg").value("잘못된 인증 정보입니다."));
     }
+
     @Test
     @DisplayName("글 삭제 - not owner")
     void deletePost3() throws Exception {

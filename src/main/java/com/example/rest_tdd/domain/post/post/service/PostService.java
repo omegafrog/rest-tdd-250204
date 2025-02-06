@@ -31,7 +31,7 @@ public class PostService {
     }
 
     public List<Post> getItems() {
-        return postRepository.findAll();
+        return postRepository.findAllByListed(true);
     }
 
     public Optional<Post> getItem(long id) {
@@ -47,9 +47,11 @@ public class PostService {
     }
 
     @Transactional
-    public Post modify(Post post, String title, String content) {
+    public Post modify(Post post, String title, String content, boolean opened, boolean listed) {
         post.setTitle(title);
         post.setContent(content);
+        post.setOpened(opened);
+        post.setListed(listed);
         return post;
     }
 
