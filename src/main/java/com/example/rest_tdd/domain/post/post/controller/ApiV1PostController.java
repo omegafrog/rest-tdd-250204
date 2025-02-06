@@ -1,7 +1,7 @@
 package com.example.rest_tdd.domain.post.post.controller;
 
 import com.example.rest_tdd.domain.member.member.entity.Member;
-import com.example.rest_tdd.domain.member.member.service.MemberService;
+import com.example.rest_tdd.domain.post.post.dto.PageDto;
 import com.example.rest_tdd.domain.post.post.dto.PostDto;
 import com.example.rest_tdd.domain.post.post.dto.PostWithContentDto;
 import com.example.rest_tdd.domain.post.post.entity.Post;
@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.validator.constraints.Length;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,31 +26,37 @@ public class ApiV1PostController {
 
     private final PostService postService;
     private final Rq rq;
-    private final MemberService memberService;
+
 
     @GetMapping
-    public RsData<List<PostDto>> getItems() {
+    public RsData<PageDto> getItems(@RequestParam(name = "page", defaultValue = "0") int currentPageNum,
+                                    @RequestParam(name = "size", defaultValue = "5") int pageSize,
+                                    @RequestParam(name = "keyword", required = false) String keyword,
+                                    @RequestParam(name = "keyword-type", required = false, defaultValue = "title") String keywordType) {
+        Page<Post> posts;
 
-        List<Post> posts = postService.getItems();
-        List<PostDto> postDtos = posts.stream()
-                .map(PostDto::new)
-                .toList();
+        if (keyword!=null && keywordType.equals("title"))
+            posts = postService.searchItemByTitle(currentPageNum, pageSize, keyword);
+        else if(keyword!=null && keywordType.equals("content"))
+            posts = postService.searchItemByContent(currentPageNum, pageSize, keyword);
+        else
+            posts = postService.getItems(currentPageNum, pageSize);
 
         return new RsData<>(
                 "200-1",
                 "글 목록 조회가 완료되었습니다.",
-                postDtos
+                new PageDto(posts)
         );
     }
 
 
     @GetMapping("{id}")
-    public RsData<PostWithContentDto> getItem( @PathVariable long id) {
+    public RsData<PostWithContentDto> getItem(@PathVariable long id) {
 
         Post post = postService.getItem(id)
-                .orElseThrow(()->new ServiceException("404-1", "존재하지 않는 글입니다."));
+                .orElseThrow(() -> new ServiceException("404-1", "존재하지 않는 글입니다."));
 
-        if(!post.isOpened()){
+        if (!post.isOpened()) {
             Member member = rq.getAuthenticatedActor();
             post.canRead(member);
         }
@@ -108,7 +115,8 @@ public class ApiV1PostController {
             @NotBlank @Length(min = 3) String content,
             boolean opened,
             boolean listed
-    ) {}
+    ) {
+    }
 
     @PostMapping
     public RsData<PostWithContentDto> write(@RequestBody @Valid WriteReqBody body) {

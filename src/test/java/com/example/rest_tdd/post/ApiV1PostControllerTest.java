@@ -3,17 +3,17 @@ package com.example.rest_tdd.post;
 import com.example.rest_tdd.domain.post.post.controller.ApiV1PostController;
 import com.example.rest_tdd.domain.post.post.entity.Post;
 import com.example.rest_tdd.domain.post.post.service.PostService;
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-
-import java.util.List;
 
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -31,35 +31,90 @@ public class ApiV1PostControllerTest {
 
     @Test
     @DisplayName("다건 조회")
+    @Transactional
     void getPosts() throws Exception {
 
-        ResultActions perform = mvc.perform(
-                get("/api/v1/posts")
+        int pageSize = 5;
+        int pageNum = 0;
+
+        ResultActions resultActions= mvc.perform(
+                get("/api/v1/posts?page=%d&size=%d".formatted(pageNum, pageSize))
         );
-        perform
+
+        Page<Post> items = postService.getItems(pageNum, pageSize);
+
+        resultActions
                 .andExpect(status().isOk())
                 .andExpect(handler().handlerType(ApiV1PostController.class))
                 .andExpect(handler().methodName("getItems"))
                 .andExpect(jsonPath("$.code").value("200-1"))
-                .andExpect(jsonPath("$.msg").value("글 목록 조회가 완료되었습니다."));
+                .andExpect(jsonPath("$.msg").value("글 목록 조회가 완료되었습니다."))
+                .andExpect(jsonPath("$.data.items.length()").value( pageSize)) // 한페이지당 보여줄 글 개수
+                .andExpect(jsonPath("$.data.currentPageNum").isNumber()) // 현재 페이지
+                .andExpect(jsonPath("$.data.totalPageNum").isNumber()); // 전체 페이지 개수
 
-        List<Post> items = postService.getItems();
 
-        for (int i = 0; i < items.size(); i++) {
-            Post post = items.get(i);
+        for(int i = 0; i < items.getContent().size(); i++) {
 
-            perform
-                    .andExpect(jsonPath("$.data[%d]".formatted(i)).exists())
-                    .andExpect(jsonPath("$.data[%d].title".formatted(i)).value(post.getTitle()))
-                    .andExpect(jsonPath("$.data[%d].content".formatted(i)).doesNotExist())
-                    .andExpect(jsonPath("$.data[%d].authorId".formatted(i)).value(post.getAuthor().getId()))
-                    .andExpect(jsonPath("$.data[%d].createdDatetime".formatted(i)).value(
-                            matchesPattern(post.getCreatedDate().toString().replaceAll("0+$", "") + ".*")))
-                    .andExpect(jsonPath("$.data[%d].modifiedDatetime".formatted(i)).value(
-                            matchesPattern(post.getModifiedDate().toString().replaceAll("0+$", "") + ".*")))
-                    .andExpect(jsonPath("$.data[%d].opened".formatted(i)).value("true"))
-                    .andExpect(jsonPath("$.data[%d].listed".formatted(i)).value("true"));
+            Post post = items.getContent().get(i);
+
+            resultActions
+                    .andExpect(jsonPath("$.data.items[%d]".formatted(i)).exists())
+                    .andExpect(jsonPath("$.data.items[%d].id".formatted(i)).value(post.getId()))
+                    .andExpect(jsonPath("$.data.items[%d].title".formatted(i)).value(post.getTitle()))
+                    .andExpect(jsonPath("$.data.items[%d].content".formatted(i)).doesNotExist())
+                    .andExpect(jsonPath("$.data.items[%d].authorId".formatted(i)).value(post.getAuthor().getId()))
+                    .andExpect(jsonPath("$.data.items[%d].authorName".formatted(i)).value(post.getAuthor().getNickname()))
+                    .andExpect(jsonPath("$.data.items[%d].opened".formatted(i)).value(post.isOpened()))
+                    .andExpect(jsonPath("$.data.items[%d].listed".formatted(i)).value(post.isListed()))
+                    .andExpect(jsonPath("$.data.items[%d].createdDatetime".formatted(i)).value(matchesPattern(post.getCreatedDate().toString().replaceAll("0+$", "") + ".*")))
+                    .andExpect(jsonPath("$.data.items[%d].modifiedDatetime".formatted(i)).value(matchesPattern(post.getModifiedDate().toString().replaceAll("0+$", "") + ".*")));
         }
+    }
+    @Test
+    @DisplayName("다건 조회 - 검색")
+    void search() throws Exception {
+
+        int pageNum=0;
+        int pageSize=5;
+        String keyword = "titl";
+
+        ResultActions resultActions= mvc.perform(
+                get("/api/v1/posts?page=%d&size=%d&keyword=%s".formatted(pageNum, pageSize, keyword))
+        );
+
+        resultActions
+                .andExpect(status().isOk())
+                .andExpect(handler().handlerType(ApiV1PostController.class))
+                .andExpect(handler().methodName("getItems"))
+                .andExpect(jsonPath("$.code").value("200-1"))
+                .andExpect(jsonPath("$.data.items.length()").value(5))
+                .andExpect(jsonPath("$.data.currentPageNum").isNumber())
+                .andExpect(jsonPath("$.data.totalPageNum").isNumber())
+                .andExpect(jsonPath("$.data.totalElementSize").value(9));
+    }
+
+    @Test
+    @DisplayName("다건 조회 - content 검색")
+    void search2() throws Exception {
+
+        int pageNum=0;
+        int pageSize=5;
+        String keyword = "content";
+
+        ResultActions resultActions= mvc.perform(
+                get("/api/v1/posts?page=%d&size=%d&keyword-type=content&keyword=%s".formatted(pageNum, pageSize, keyword))
+        );
+
+        resultActions
+                .andExpect(status().isOk())
+                .andExpect(handler().handlerType(ApiV1PostController.class))
+                .andExpect(handler().methodName("getItems"))
+                .andExpect(jsonPath("$.code").value("200-1"))
+                .andExpect(jsonPath("$.data.items.length()").value(5))
+                .andExpect(jsonPath("$.data.currentPageNum").isNumber())
+                .andExpect(jsonPath("$.data.totalPageNum").isNumber())
+                .andExpect(jsonPath("$.data.totalElementSize").value(9));
     }
 
     @Test

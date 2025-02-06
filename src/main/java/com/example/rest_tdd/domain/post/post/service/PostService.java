@@ -4,10 +4,12 @@ import com.example.rest_tdd.domain.member.member.entity.Member;
 import com.example.rest_tdd.domain.post.post.entity.Post;
 import com.example.rest_tdd.domain.post.post.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -30,10 +32,19 @@ public class PostService {
         );
     }
 
-    public List<Post> getItems() {
-        return postRepository.findAllByListed(true);
+    public Page<Post> getItems(int currentPageNum, int pageSize) {
+        Pageable pageable = PageRequest.of(currentPageNum, pageSize);
+        return postRepository.findAllByListed(true, pageable);
     }
 
+    public Page<Post> searchItemByTitle(int currentPageNum, int pageSize, String keyword) {
+        Pageable pageable = PageRequest.of(currentPageNum, pageSize);
+        return postRepository.findByListedAndTitleLike(true, "%"+keyword+"%", pageable);
+    }
+    public Page<Post> searchItemByContent(int currentPageNum, int pageSize, String keyword) {
+        Pageable pageable = PageRequest.of(currentPageNum, pageSize);
+        return postRepository.findByListedAndContentLike(true, "%"+keyword+"%", pageable);
+    }
     public Optional<Post> getItem(long id) {
         return postRepository.findById(id);
     }
@@ -57,5 +68,9 @@ public class PostService {
 
     public void flush() {
         postRepository.flush();
+    }
+
+    public long getTotalElements() {
+        return postRepository.count();
     }
 }

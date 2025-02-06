@@ -65,5 +65,14 @@ public class BaseInitData {
         post2.addComment(user1, "저는 이미 축구하기로 함..");
 
         postService.write(user2, "title3", "content3", false,false);
+        postService.write(user2, "title4", "content3", false,true);
+        postService.write(user2, "title5", "content3", false,true);
+        postService.write(user2, "title6", "content3", false,true);
+        postService.write(user2, "title7", "content3", false,true);
+        postService.write(user2, "title3", "content3", false,true);
+        postService.write(user2, "title3", "content3", false,true);
+        postService.write(user2, "title3", "content3", false,true);
+        postService.write(user2, "title3", "content3", false,true);
+        postService.write(user2, "title3", "content3", false,true);
     }
 }
