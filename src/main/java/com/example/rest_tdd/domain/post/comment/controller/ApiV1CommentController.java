@@ -53,7 +53,7 @@ public class ApiV1CommentController {
 
     @PostMapping
     @Transactional
-    public RsData<Void> write(@PathVariable long postId, @RequestBody WriteReqBody reqBody) {
+    public RsData<CommentDto> write(@PathVariable long postId, @RequestBody WriteReqBody reqBody) {
         Member actor = rq.getAuthenticatedActor();
         Comment comment = _write(postId, actor, reqBody.content());
 

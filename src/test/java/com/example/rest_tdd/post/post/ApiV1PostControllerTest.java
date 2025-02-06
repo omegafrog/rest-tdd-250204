@@ -1,4 +1,4 @@
-package com.example.rest_tdd.post;
+package com.example.rest_tdd.post.post;
 
 import com.example.rest_tdd.domain.member.member.entity.Member;
 import com.example.rest_tdd.domain.member.member.service.MemberService;
