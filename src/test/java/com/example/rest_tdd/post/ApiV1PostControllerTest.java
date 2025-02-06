@@ -40,7 +40,10 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.code").value("200-1"))
                 .andExpect(jsonPath("$.msg").value("글 조회가 완료되었습니다."))
                 .andExpect(jsonPath("$.data").exists())
-                .andExpect(jsonPath("$.data.content").exists());
+                .andExpect(jsonPath("$.data.content").exists())
+                .andExpect(jsonPath("$.data.opened").value("true"))
+                .andExpect(jsonPath("$.data.listed").value("true"));
+
     }
     @Test
     @DisplayName("단건 조회 - 없는 글 조회")

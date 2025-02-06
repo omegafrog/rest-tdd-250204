@@ -103,15 +103,16 @@ public class ApiV1PostController {
 
     record WriteReqBody(
             @NotBlank @Length(min = 3) String title,
-            @NotBlank @Length(min = 3) String content
-    ) {
-    }
+            @NotBlank @Length(min = 3) String content,
+            boolean opened,
+            boolean listed
+    ) {}
 
     @PostMapping
     public RsData<PostDto> write(@RequestBody @Valid WriteReqBody body) {
 
         Member actor = rq.getAuthenticatedActor();
-        Post post = postService.write(actor, body.title(), body.content(), true);
+        Post post = postService.write(actor, body.title(), body.content(), body.opened, body.listed);
 
         return new RsData<>(
                 "200-1",

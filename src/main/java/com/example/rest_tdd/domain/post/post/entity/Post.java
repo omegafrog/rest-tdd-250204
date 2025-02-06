@@ -24,6 +24,8 @@ public class Post extends BaseTime {
     private String content;
     @Builder.Default
     private boolean opened = true;
+    @Builder.Default
+    private boolean listed = true;
 
     @OneToMany(mappedBy = "post", cascade = {CascadeType.PERSIST, CascadeType.REMOVE}, orphanRemoval = true)
     @Builder.Default

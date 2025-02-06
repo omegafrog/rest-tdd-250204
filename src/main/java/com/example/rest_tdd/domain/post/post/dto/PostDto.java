@@ -18,6 +18,8 @@ public class PostDto {
     private String content;
     private long authorId;
     private String authorName;
+    private boolean opened;
+    private boolean listed;
 
     public PostDto(Post post) {
         this.id = post.getId();
@@ -27,5 +29,7 @@ public class PostDto {
         this.content = post.getContent();
         this.authorId = post.getAuthor().getId();
         this.authorName = post.getAuthor().getNickname();
+        this.opened = post.isOpened();
+        this.listed = post.isListed();
     }
 }

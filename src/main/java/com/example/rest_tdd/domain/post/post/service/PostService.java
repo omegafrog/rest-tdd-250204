@@ -16,7 +16,7 @@ public class PostService {
 
     private final PostRepository postRepository;
 
-    public Post write(Member author, String title, String content, boolean opened) {
+    public Post write(Member author, String title, String content, boolean opened, boolean listed) {
 
         return postRepository.save(
                 Post
@@ -25,6 +25,7 @@ public class PostService {
                         .title(title)
                         .content(content)
                         .opened(opened)
+                        .listed(listed)
                         .build()
         );
     }
