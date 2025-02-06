@@ -33,11 +33,11 @@ public class ApiV1PostController {
                                     @RequestParam(name = "size", defaultValue = "5") int pageSize,
                                     @RequestParam(name = "keyword", required = false) String keyword,
                                     @RequestParam(name = "keyword-type", required = false, defaultValue = "title") String keywordType) {
-        Page<Post> posts;
 
-        if (keyword!=null && keywordType.equals("title"))
+        Page<Post> posts;
+        if (keyword != null && keywordType.equals("title"))
             posts = postService.searchItemByTitle(currentPageNum, pageSize, keyword);
-        else if(keyword!=null && keywordType.equals("content"))
+        else if (keyword != null && keywordType.equals("content"))
             posts = postService.searchItemByContent(currentPageNum, pageSize, keyword);
         else
             posts = postService.getItems(currentPageNum, pageSize);
@@ -45,6 +45,29 @@ public class ApiV1PostController {
         return new RsData<>(
                 "200-1",
                 "글 목록 조회가 완료되었습니다.",
+                new PageDto(posts)
+        );
+    }
+
+    @GetMapping("/me")
+    public RsData<PageDto> getMines(@RequestParam(name = "page", defaultValue = "0") int currentPageNum,
+                                      @RequestParam(name = "size", defaultValue = "5") int pageSize,
+                                      @RequestParam(name = "keyword", required = false) String keyword,
+                                      @RequestParam(name = "keyword-type", required = false, defaultValue = "title") String keywordType) {
+
+        Member member = rq.getAuthenticatedActor();
+
+        Page<Post> posts;
+        if(keyword != null && keywordType.equals("title"))
+            posts = postService.getMinesByTitle(member, currentPageNum, pageSize, keyword);
+        else if (keyword != null && keywordType.equals("content"))
+            posts = postService.getMinesByContent(member, currentPageNum, pageSize, keyword);
+        else
+            posts = postService.getMines(member, currentPageNum, pageSize);
+
+        return new RsData<>(
+                "200-1",
+                "내 글 조회 성공.",
                 new PageDto(posts)
         );
     }

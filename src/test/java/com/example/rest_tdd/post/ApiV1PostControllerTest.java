@@ -1,5 +1,7 @@
 package com.example.rest_tdd.post;
 
+import com.example.rest_tdd.domain.member.member.entity.Member;
+import com.example.rest_tdd.domain.member.member.service.MemberService;
 import com.example.rest_tdd.domain.post.post.controller.ApiV1PostController;
 import com.example.rest_tdd.domain.post.post.entity.Post;
 import com.example.rest_tdd.domain.post.post.service.PostService;
@@ -17,6 +19,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -28,6 +31,8 @@ public class ApiV1PostControllerTest {
     private MockMvc mvc;
     @Autowired
     private PostService postService;
+    @Autowired
+    private MemberService memberService;
 
     @Test
     @DisplayName("다건 조회")
@@ -115,6 +120,49 @@ public class ApiV1PostControllerTest {
                 .andExpect(jsonPath("$.data.currentPageNum").isNumber())
                 .andExpect(jsonPath("$.data.totalPageNum").isNumber())
                 .andExpect(jsonPath("$.data.totalElementSize").value(9));
+    }
+
+
+    @Test
+    @DisplayName("내 글 조회 - 페이징, 검색 적용")
+    @Transactional
+    void getPost4() throws Exception {
+        String keywordType = "title";
+        String keyword = "title3";
+        int page = 0;
+        int size = 5;
+        String apiKey = "user2";
+        ResultActions perform = mvc.perform(get("/api/v1/posts/me?keyword-type=%s&keyword=%s&page=%d&size=%d"
+                .formatted(keywordType, keyword, page, size))
+                .header("Authorization", "Bearer " + apiKey));
+
+        perform
+                .andExpect(status().isOk())
+                .andExpect(handler().handlerType(ApiV1PostController.class))
+                .andExpect(handler().methodName("getMines"))
+                .andExpect(jsonPath("$.code").value("200-1"))
+                .andExpect(jsonPath("$.data.items.length()").value(5))
+                .andExpect(jsonPath("$.data.currentPageNum").isNumber())
+                .andExpect(jsonPath("$.data.totalPageNum").value(2))
+                .andExpect(jsonPath("$.data.totalElementSize").value(6))
+                .andDo(print());
+
+        Member member = memberService.findByUsername("user2").get();
+        Page<Post> title3 = postService.getMinesByTitle(member, page, size, "title3");
+        for (int i = 0; i < title3.getContent().size(); i++) {
+            Post post = title3.getContent().get(i);
+            perform
+                    .andExpect(jsonPath("$.data.items[%d]".formatted(i)).exists())
+                    .andExpect(jsonPath("$.data.items[%d].id".formatted(i)).value(post.getId()))
+                    .andExpect(jsonPath("$.data.items[%d].title".formatted(i)).value(post.getTitle()))
+                    .andExpect(jsonPath("$.data.items[%d].content".formatted(i)).doesNotExist())
+                    .andExpect(jsonPath("$.data.items[%d].authorId".formatted(i)).value(post.getAuthor().getId()))
+                    .andExpect(jsonPath("$.data.items[%d].authorName".formatted(i)).value(post.getAuthor().getNickname()))
+                    .andExpect(jsonPath("$.data.items[%d].opened".formatted(i)).value(post.isOpened()))
+                    .andExpect(jsonPath("$.data.items[%d].listed".formatted(i)).value(post.isListed()))
+                    .andExpect(jsonPath("$.data.items[%d].createdDatetime".formatted(i)).value(matchesPattern(post.getCreatedDate().toString().replaceAll("0+$", "") + ".*")))
+                    .andExpect(jsonPath("$.data.items[%d].modifiedDatetime".formatted(i)).value(matchesPattern(post.getModifiedDate().toString().replaceAll("0+$", "") + ".*")));
+        }
     }
 
     @Test

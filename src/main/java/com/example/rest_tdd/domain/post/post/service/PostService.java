@@ -73,4 +73,16 @@ public class PostService {
     public long getTotalElements() {
         return postRepository.count();
     }
+
+    public Page<Post> getMinesByTitle(Member author, int currentPageNum, int pageSize, String keyword) {
+        return postRepository.findByAuthorAndTitleLike(author, "%"+keyword+"%", PageRequest.of(currentPageNum, pageSize));
+    }
+
+    public Page<Post> getMinesByContent(Member member, int currentPageNum, int pageSize, String keyword) {
+        return postRepository.findByAuthorAndContentLike(member, "%"+keyword+"%", PageRequest.of(currentPageNum, pageSize));
+    }
+
+    public Page<Post> getMines(Member member, int currentPageNum, int pageSize) {
+        return postRepository.findByAuthor(member, PageRequest.of(currentPageNum, pageSize));
+    }
 }
