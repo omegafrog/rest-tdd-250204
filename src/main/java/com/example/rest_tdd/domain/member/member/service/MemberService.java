@@ -2,6 +2,7 @@ package com.example.rest_tdd.domain.member.member.service;
 
 import com.example.rest_tdd.domain.member.member.entity.Member;
 import com.example.rest_tdd.domain.member.member.repository.MemberRepository;
+import com.example.rest_tdd.global.exception.ServiceException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -39,5 +40,16 @@ public class MemberService {
 
     public Optional<Member> findByApiKey(String apiKey) {
         return memberRepository.findByApiKey(apiKey);
+    }
+
+    public Member login(String username, String password) {
+
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new ServiceException("401-1", "잘못된 아이디입니다."));
+
+        if(!member.getPassword().equals(password)) {
+           throw new ServiceException("401-2", "로그인 실패");
+        }
+        return member;
     }
 }

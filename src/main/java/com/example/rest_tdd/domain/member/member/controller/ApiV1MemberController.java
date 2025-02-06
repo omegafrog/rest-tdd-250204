@@ -3,13 +3,16 @@ package com.example.rest_tdd.domain.member.member.controller;
 import com.example.rest_tdd.domain.member.member.dto.MemberDto;
 import com.example.rest_tdd.domain.member.member.entity.Member;
 import com.example.rest_tdd.domain.member.member.service.MemberService;
+import com.example.rest_tdd.global.Rq;
 import com.example.rest_tdd.global.dto.RsData;
 import com.example.rest_tdd.global.exception.ServiceException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/members")
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ApiV1MemberController {
 
     private final MemberService memberService;
+    private final Rq rq;
 
     record JoinReqBody(String username, String password, String nickname) {}
 
@@ -37,4 +41,23 @@ public class ApiV1MemberController {
                 );
     }
 
+    public record LoginResBody(MemberDto item, String apiKey){}
+
+    public record LoginReqBody(@NotBlank String username, @NotBlank String password){}
+
+    @PostMapping("/login")
+    public RsData<LoginResBody> login(@Valid @RequestBody LoginReqBody reqBody) {
+        Member member = memberService.login(reqBody.username, reqBody.password);
+
+        return new RsData<>("200-1", "%s님 환영합니다.".formatted(member.getNickname()),
+                new LoginResBody(new MemberDto(member), member.getApiKey()));
+    }
+
+    @GetMapping("/me")
+    public RsData<MemberDto> me() {
+
+        Member member = rq.getAuthenticatedActor();
+
+        return new RsData<>("200-1", "유저 정보 조회 성공", new MemberDto(member));
+    }
 }

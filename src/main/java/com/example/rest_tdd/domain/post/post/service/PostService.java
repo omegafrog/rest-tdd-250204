@@ -16,7 +16,7 @@ public class PostService {
 
     private final PostRepository postRepository;
 
-    public Post write(Member author, String title, String content) {
+    public Post write(Member author, String title, String content, boolean opened) {
 
         return postRepository.save(
                 Post
@@ -24,6 +24,7 @@ public class PostService {
                         .author(author)
                         .title(title)
                         .content(content)
+                        .opened(opened)
                         .build()
         );
     }
@@ -45,9 +46,10 @@ public class PostService {
     }
 
     @Transactional
-    public void modify(Post post, String title, String content) {
+    public Post modify(Post post, String title, String content) {
         post.setTitle(title);
         post.setContent(content);
+        return post;
     }
 
     public void flush() {

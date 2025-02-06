@@ -1,6 +1,7 @@
 package com.example.rest_tdd.domain.post.post.controller;
 
 import com.example.rest_tdd.domain.member.member.entity.Member;
+import com.example.rest_tdd.domain.member.member.service.MemberService;
 import com.example.rest_tdd.domain.post.post.dto.PostDto;
 import com.example.rest_tdd.domain.post.post.entity.Post;
 import com.example.rest_tdd.domain.post.post.service.PostService;
@@ -23,6 +24,7 @@ public class ApiV1PostController {
 
     private final PostService postService;
     private final Rq rq;
+    private final MemberService memberService;
 
     @GetMapping
     public RsData<List<PostDto>> getItems() {
@@ -41,9 +43,15 @@ public class ApiV1PostController {
 
 
     @GetMapping("{id}")
-    public RsData<PostDto> getItem(@PathVariable long id) {
+    public RsData<PostDto> getItem( @PathVariable long id) {
 
-        Post post = postService.getItem(id).get();
+        Post post = postService.getItem(id)
+                .orElseThrow(()->new ServiceException("404-1", "존재하지 않는 글입니다."));
+
+        if(!post.isOpened()){
+            Member member = rq.getAuthenticatedActor();
+            post.canRead(member);
+        }
 
         return new RsData<>(
                 "200-1",
@@ -74,7 +82,7 @@ public class ApiV1PostController {
     }
 
     @PutMapping("{id}")
-    public RsData<Void> modify(@PathVariable long id, @RequestBody @Valid ModifyReqBody body
+    public RsData<PostDto> modify(@PathVariable long id, @RequestBody @Valid ModifyReqBody body
     ) {
 
         Member actor = rq.getAuthenticatedActor();
@@ -85,11 +93,11 @@ public class ApiV1PostController {
         }
 
         post.canModify(actor);
-        postService.modify(post, body.title(), body.content());
+        Post modify = postService.modify(post, body.title(), body.content());
         return new RsData<>(
                 "200-1",
                 "%d번 글 수정이 완료되었습니다.".formatted(id),
-                null
+                new PostDto(modify)
         );
     }
 
@@ -103,7 +111,7 @@ public class ApiV1PostController {
     public RsData<PostDto> write(@RequestBody @Valid WriteReqBody body) {
 
         Member actor = rq.getAuthenticatedActor();
-        Post post = postService.write(actor, body.title(), body.content());
+        Post post = postService.write(actor, body.title(), body.content(), true);
 
         return new RsData<>(
                 "200-1",
